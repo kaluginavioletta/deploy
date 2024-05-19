@@ -13,13 +13,9 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id('id_order');
-            $table->foreignId('id_drink')->constrained('drinkables', 'id_drink')->onUpdate('cascade')->onDelete('cascade');
-            $table->foreignId('id_sushi')->constrained('sushi', 'id_sushi')->onUpdate('cascade')->onDelete('cascade');
-            $table->foreignId('id_dessert')->constrained('dessert', 'id_dessert')->onUpdate('cascade')->onDelete('cascade');
-            $table->integer('count_order');
             $table->foreignId('id_address')->constrained('addresses', 'id_address')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('id_status')->constrained('statuses', 'id_status')->onUpdate('cascade')->onDelete('cascade');
-            $table->integer('price_order');
+            $table->decimal('total_price', 8, 2); // 8 цифр всего, 2 после запятой
             $table->timestamps();
         });
     }

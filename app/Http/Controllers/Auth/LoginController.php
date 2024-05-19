@@ -3,25 +3,39 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Session;
 
 class LoginController extends Controller
 {
-    public function store(Request $request)
+    public function login(Request $request)
     {
-        $credentials = $request->validate([
+        $request->validate([
             'login' => 'required',
             'password' => 'required'
         ]);
 
-        if (! Auth::attempt($credentials)) {
+        $user = User::where('login', $request->login)->first();
+
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
-                'login' => 'Эти учетные данные не соответствуют нашим записям'
+                'login' => ['Эти учетные данные не соответствуют нашим записям'],
             ]);
         }
-        return response()->json(['message' => 'Успешный вход'], 200);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        $user->api_token = $token;
+        $user->save();
+
+        // Сохранение токена в сессии
+        Session::put('auth_token', $token);
+
+        return response()->json(['message' => 'Успешный вход', 'token' => $token], 200);
     }
 
     public function logout(Request $request)

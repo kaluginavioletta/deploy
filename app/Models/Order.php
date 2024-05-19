@@ -11,31 +11,16 @@ class Order extends Model
 
     public $timestamps = false;
 
+    protected $table = 'orders';
+
+    protected $primaryKey = 'id_order';
+
     protected $fillable = [
-        'id_order',
-        'id_drink',
-        'id_sushi',
-        'id_dessert',
-        'count_order',
+        'id_user',
         'id_address',
         'id_status',
-        'price_order'
+        'total_price'
     ];
-
-    public function drink()
-    {
-        return $this->belongsTo(Drink::class, 'id_drink', 'id_drink');
-    }
-
-    public function sushi()
-    {
-        return $this->belongsTo(Sushi::class, 'id_sushi', 'id_sushi');
-    }
-
-    public function dessert()
-    {
-        return $this->belongsTo(Dessert::class, 'id_dessert', 'id_dessert');
-    }
 
     public function address()
     {
@@ -45,5 +30,15 @@ class Order extends Model
     public function status()
     {
         return $this->belongsTo(Status::class, 'id_status', 'id_status');
+    }
+
+    public function item()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    public function hasProductType($productType)
+    {
+        return $this->item()->where('product_type', $productType)->exists();
     }
 }

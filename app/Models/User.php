@@ -21,6 +21,7 @@ class User extends Authenticatable
     public $timestamps = false;
 
     protected $primaryKey = 'id_user';
+
     protected $fillable = [
         'surname',
         'name',
@@ -30,7 +31,8 @@ class User extends Authenticatable
         'login',
         'password',
         'id_role',
-        'id_order'
+        'id_order',
+        'api_token', // Добавляем новый столбец для массового заполнения
     ];
 
     /**

@@ -11,6 +11,10 @@ class Address extends Model
 
     public $timestamps = false;
 
+    protected $table = 'addresses';
+
+    protected $primaryKey = 'id_address';
+
     protected $fillable = [
         'id_address',
         'address_city',

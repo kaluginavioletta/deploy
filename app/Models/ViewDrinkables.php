@@ -5,18 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Role extends Model
+class ViewDrinkables extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    protected $table = 'view_drinkables';
 
-    protected $table = 'roles';
-
-    protected $primaryKey = 'id_role';
+    protected $primaryKey = 'id_view_drink';
 
     protected $fillable = [
-        'id_role',
-        'name_role'
+        'name_view_drink',
     ];
 }

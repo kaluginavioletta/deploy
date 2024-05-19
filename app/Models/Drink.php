@@ -11,18 +11,24 @@ class Drink extends Model
 
     public $timestamps = false;
 
+    protected $primaryKey = 'id_drink';
+
+    protected $table = 'drinkables';
+
     protected $fillable = [
         'id_drink',
         'name_drink',
-        'desc_drink',
+        'id_view_drink',
+        'compound_drink',
         'price_drink',
+        'percent_discount_drink',
         'discounted_price_drink',
         'img_drink'
     ];
 
-    public function order()
+    public function viewDrinkables()
     {
-        return $this->hasMany(Order::class, 'id_drink', 'id_drink');
+        return $this->belongsTo(ViewDrinkables::class, 'id_view_sushi', 'id_view_sushi');
     }
 
 }

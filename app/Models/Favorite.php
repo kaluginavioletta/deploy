@@ -11,6 +11,10 @@ class Favorite extends Model
 
     public $timestamps = false;
 
+    protected $primaryKey = 'id_user';
+
+    protected $table = 'favorites';
+
     protected $fillable = [
         'id_user',
         'id_sushi',
