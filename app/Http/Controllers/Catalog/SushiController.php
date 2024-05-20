@@ -57,8 +57,26 @@ class SushiController extends Controller
 
         $order = $this->getOrCreateOrder($user);
 
-        $orderItem = $order->items()->where('product_type', Sushi::class)
-            ->where('product_id', $sushi->id_sushi)
+        $order->id_address = null;
+
+        if ($request->has('checkout')) { // Проверка на оформление заказа
+            // Получение id_address от пользователя
+            $idAddress = $request->input('id_address');
+
+            // Установка id_address в модель Order
+            $order->id_address = $idAddress;
+
+            // Сохранение заказа с id_address
+            $order->save();
+
+            // ... ваш код для оформления заказа ...
+        } else {
+            // Сохранение заказа без id_address
+            $order->save();
+        }
+
+        $orderItem = $order->items()->where('type_product', Sushi::class)
+            ->where('id_product', $sushi->id_sushi)
             ->first();
 
         if ($orderItem) {
@@ -72,7 +90,7 @@ class SushiController extends Controller
                 'quantity' => $request->input('quantity', 1),
                 'price' => $sushi->price_sushi,
             ]);
-            $orderItem->save();
+            $order->items()->save($orderItem);
         }
 
         $order->calculateTotalPrice();
@@ -84,24 +102,15 @@ class SushiController extends Controller
         ]);
     }
 
-    private function getOrCreateOrder()
+    protected function getOrCreateOrder($user)
     {
-        // Получаем ID пользователя из запроса (Bearer token или другой способ аутентификации)
-        $userId = Auth::id();
-
-        if (!$userId) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-
-        $order = Order::where('id_user', $userId)
-            ->where('id_status', 1)
-            ->first();
+        $order = $user->orders()->where('id_status', 1)->first(); // Assuming status 1 is for pending orders
 
         if (!$order) {
             $order = new Order([
-                'id_user' => $userId,
+                'id_user' => $user->id_user,
                 'id_status' => 1,
-                'total_price' => 0,
+                'total_price' => 0, // Set total_price to default value
             ]);
             $order->save();
         }
