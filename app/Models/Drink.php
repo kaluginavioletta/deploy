@@ -31,4 +31,8 @@ class Drink extends Model
         return $this->belongsTo(ViewDrinkables::class, 'id_view_sushi', 'id_view_sushi');
     }
 
+    public function cart_items()
+    {
+        return $this->morphMany(CartOrder::class, 'product');
+    }
 }

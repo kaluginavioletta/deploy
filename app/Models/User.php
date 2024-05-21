@@ -67,4 +67,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Order::class, 'id_order', 'id_order');
     }
+
+    public function cart_items()
+    {
+        return $this->hasMany(CartOrder::class, 'id_user', 'id_user');
+    }
 }

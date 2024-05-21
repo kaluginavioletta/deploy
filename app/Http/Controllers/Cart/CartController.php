@@ -3,75 +3,142 @@
 namespace App\Http\Controllers\Cart;
 
 use App\Http\Controllers\Controller;
+use App\Models\CartOrder;
+use App\Models\Dessert;
+use App\Models\Drink;
+use App\Models\Order;
+use App\Models\Product;
+use App\Models\Sushi;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CartController extends Controller
 {
-    public function addToCart(Request $request)
+    public function showCart()
     {
-        $user = auth()->user();
-        $product = Product::findOrFail($request->product_id);
+        $user = Auth::user();
+        $cartItems = $user->cart_items;
 
-        $cart = $user->cart;
-        if (!$cart) {
-            $cart = Cart::create(['user_id' => $user->id]);
-        }
+        if ($cartItems->isNotEmpty()) {
+            $cartDetails = [];
+            $totalPrice = 0;
 
-        $cartItem = $cart->items()->where('product_id', $product->id)->first();
-        if ($cartItem) {
-            $cartItem->increment('quantity');
+            foreach ($cartItems as $cartItem) {
+                $product = Product::find($cartItem->id_product);
+
+                if ($product) {
+                    $itemDetails = [
+                        'product_name' => $product->name,
+                        'price' => $product->price,
+                        'quantity' => $cartItem->quantity,
+                        'grams' => $cartItem->grams,
+                        'img' => $cartItem->img,
+                        'total_price' => $cartItem->quantity * $product->price,
+                    ];
+
+                    // Добавляем дополнительные детали в зависимости от типа продукта
+                    if ($product->type === 'sushi') {
+                        $itemDetails['compound'] = $product->compound;
+                        $itemDetails['grams'] = $product->grams;
+                    } elseif ($product->type === 'drink') {
+                        $itemDetails['compound'] = $product->compound;
+                    } elseif ($product->type === 'dessert') {
+                        $itemDetails['compound'] = $product->compound;
+                    }
+
+                    $cartDetails[] = $itemDetails;
+                    $totalPrice += $itemDetails['total_price'];
+                }
+            }
+
+            return response()->json([
+                'cart' => $cartDetails,
+                'total_price' => $totalPrice,
+            ]);
         } else {
-            $cart->items()->create([
-                'product_id' => $product->id,
-                'quantity' => 1,
+            return response()->json([
+                'message' => 'Корзина пользователя пуста.'
             ]);
         }
-
-        return response()->json(['message' => 'Товар добавлен в корзину']);
     }
 
-    public function updateCartItem(Request $request, $id)
+    public function addToCart(Request $request, $id)
     {
-        $cartItem = CartItem::findOrFail($id);
-        $cartItem->update(['quantity' => $request->quantity]);
+        $product = Product::findOrFail($id);
+        $user = Auth::user();
 
-        return response()->json(['message' => 'Количество товара обновлено']);
-    }
+        // Определение type_product на основе типа продукта
+        $typeProduct = '';
 
-    public function removeCartItem($id)
-    {
-        $cartItem = CartItem::findOrFail($id);
-        $cartItem->delete();
-
-        return response()->json(['message' => 'Товар удален из корзины']);
-    }
-
-    public function checkout()
-    {
-        $user = auth()->user();
-        $cart = $user->cart;
-
-        if (!$cart || $cart->items->isEmpty()) {
-            return response()->json(['error' => 'Корзина пуста'], 400);
+        if ($product instanceof Sushi) {
+            $typeProduct = 'sushi';
+        } elseif ($product instanceof Drink) {
+            $typeProduct = 'drink';
+        } elseif ($product instanceof Dessert) {
+            $typeProduct = 'dessert';
         }
 
-        // Создание заказа на основе корзины
-        $order = Order::create([
-            'user_id' => $user->id,
-            'total_amount' => $cart->total_amount,
+        // Проверяем, есть ли уже этот товар в корзине
+        $orderItem = $user->cart_items()->where('id_product', $product->id_product)->first();
+
+        if ($orderItem) {
+            // Если товар уже есть, увеличиваем количество
+            $orderItem->quantity += $request->input('quantity', 1);
+            $orderItem->save();
+            $message = 'Количество товаров в корзине увеличено!';
+        } else {
+            // Если товара нет, создаем новую запись в корзине с указанием type_product и price
+            $orderItem = new CartOrder([
+                'id_user' => $user->id_user,
+                'id_product' => $product->id_product,
+                'quantity' => $request->input('quantity', 1),
+                'type_product' => $typeProduct,
+                'price' => $product->price,
+            ]);
+            $orderItem->save();
+            $message = 'Товар добавлен в корзину!';
+        }
+
+        return response()->json([
+            'message' => $message,
         ]);
+    }
 
-        foreach ($cart->items as $cartItem) {
-            $order->items()->create([
-                'product_id' => $cartItem->product_id,
-                'quantity' => $cartItem->quantity,
+    protected function getOrCreateOrder($user)
+    {
+        $order = $user->orders()->where('id_status', 1)->first(); // Assuming status 1 is for pending orders
+
+        if (!$order) {
+            $order = new Order([
+                'id_user' => $user->id_user,
+                'id_status' => 1,
+                'total_price' => 0, // Set total_price to default value
             ]);
-            $cartItem->delete();
+            $order->save();
         }
 
-        $cart->delete();
+        return $order;
+    }
+    public function removeFromCart(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+        $user = Auth::user();
 
-        return response()->json(['message' => 'Заказ оформлен успешно']);
+        // Проверяем, есть ли этот товар в корзине
+        $orderItem = $user->cart_items()->where('id_product', $product->id_product)->first();
+
+        if ($orderItem) {
+            // Если товар есть, удаляем его из корзины
+            $orderItem->delete();
+
+            return response()->json([
+                'message' => 'Товар удален из корзины!',
+            ]);
+        } else {
+            return response()->json([
+                'message' => 'Товар отсутствует в корзине!',
+            ]);
+        }
     }
 }
 

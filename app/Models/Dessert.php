@@ -30,4 +30,9 @@ class Dessert extends Model
     {
         return $this->belongsTo(ViewDessert::class, 'id_view_dessert', 'id_view_dessert');
     }
+
+    public function cart_items()
+    {
+        return $this->morphMany(CartOrder::class, 'product');
+    }
 }

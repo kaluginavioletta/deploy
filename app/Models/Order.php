@@ -32,20 +32,19 @@ class Order extends Model
         return $this->belongsTo(Status::class, 'id_status', 'id_status');
     }
 
-    public function items()
-    {
-        return $this->hasMany(CartOrder::class, 'id_order');
-    }
-
     public function hasProductType($productType)
     {
         return $this->items()->where('product_type', $productType)->exists();
     }
 
+    public function cart_orders()
+    {
+        return $this->hasMany(CartOrder::class, 'id_order', 'id_order');
+    }
+
     public function calculateTotalPrice()
     {
         $totalPrice = 0;
-
         foreach ($this->items as $item) {
             $totalPrice += $item->quantity * $item->price;
         }

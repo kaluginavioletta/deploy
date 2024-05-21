@@ -14,6 +14,7 @@ class CartOrder extends Model
     protected $primaryKey = 'id_cart';
 
     protected $fillable = [
+        'id_user',
         'id_order',
         'type_product',
         'id_product',
@@ -28,6 +29,23 @@ class CartOrder extends Model
 
     public function product()
     {
-        return $this->morphTo();
+        return $this->belongsTo(Product::class);
+    }
+
+    public function removeFromCart()
+    {
+        $this->delete();
+    }
+
+    public function items()
+    {
+        return $this->hasMany(Order::class, 'id_order', 'id_order');
+    }
+
+    public function increaseQuantityAndUpdatePrice($quantity)
+    {
+        $this->quantity += $quantity;
+        $this->price = $this->quantity * $this->price;
+        $this->save();
     }
 }

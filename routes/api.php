@@ -11,7 +11,11 @@ use App\Http\Controllers\Auth\LoginController;
 Route::middleware('App\Http\Middleware\Cors')->group(function() {
     Route::get('/sushi', [SushiController::class, 'index']);
     Route::get('/sushi/{id}', [SushiController::class, 'show']);
-    Route::post('/sushi/{id}/add-to-cart', [SushiController::class, 'addToCart'])->middleware('auth');
+    Route::get('/cart', [CartController::class, 'showCart'])->middleware('auth');
+    Route::get('/orders', [SushiController::class, 'showOrders'])->middleware('auth');
+    Route::post('/sushi/{id}/add-to-cart', [CartController::class, 'addToCart'])->middleware('auth');
+    Route::delete('/sushi/{id}/remove-from-cart', [CartController::class, 'removeFromCart'])->middleware('auth');
+    Route::post('/create-order', [SushiController::class, 'createOrder'])->middleware('auth');
 });
 
 Route::middleware(['App\Http\Middleware\Cors', 'admin'])->group(function() {
