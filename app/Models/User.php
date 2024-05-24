@@ -65,11 +65,16 @@ class User extends Authenticatable
 
     public function orders()
     {
-        return $this->belongsTo(Order::class, 'id_order', 'id_order');
+        return $this->belongsTo(Order::class, 'id_user', 'id_user');
     }
 
     public function cart_items()
     {
         return $this->hasMany(CartOrder::class, 'id_user', 'id_user');
+    }
+
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class, 'id_user', 'id_user');
     }
 }

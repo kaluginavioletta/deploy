@@ -17,28 +17,18 @@ class Favorite extends Model
 
     protected $fillable = [
         'id_user',
-        'id_sushi',
-        'id_drink',
+        'id_product',
+        'type_product',
         'id_dessert'
     ];
 
     public function users()
     {
-        return $this->belongsTo(User::class, 'id_user', 'id');
+        return $this->belongsTo(User::class, 'id_user', 'id_user');
     }
 
-    public function sushi()
+    public function product()
     {
-        return $this->belongsTo(Sushi::class, 'id_sushi', 'id_sushi');
-    }
-
-    public function drink()
-    {
-        return $this->belongsTo(Drink::class, 'id_drink', 'id_drink');
-    }
-
-    public function dessert()
-    {
-        return $this->belongsTo(Dessert::class, 'id_dessert', 'id_dessert');
+        return $this->belongsTo(Product::class, 'id_product', 'id_product');
     }
 }

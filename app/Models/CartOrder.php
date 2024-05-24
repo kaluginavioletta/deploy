@@ -24,12 +24,12 @@ class CartOrder extends Model
 
     public function order()
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(Order::class, 'id_order', 'id_order');
     }
 
     public function product()
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class, 'id_product', 'id_product');
     }
 
     public function removeFromCart()

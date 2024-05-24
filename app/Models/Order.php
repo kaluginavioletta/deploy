@@ -52,4 +52,9 @@ class Order extends Model
         $this->total_price = $totalPrice;
         $this->save();
     }
+
+    public function items()
+    {
+        return $this->hasMany(CartOrder::class, 'id_order');
+    }
 }
