@@ -24,7 +24,7 @@ class RegisterController extends Controller
             $request->validate([
                 'surname' => 'required|string',
                 'name' => 'required|string',
-                'patronymic' => 'required|string',
+                'patronymic' => 'string',
                 'tel' => [
                     'required',
                     'numeric',
