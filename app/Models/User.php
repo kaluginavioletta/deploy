@@ -31,6 +31,7 @@ class User extends Authenticatable
         'login',
         'password',
         'id_role',
+        'id_cart',
         'id_order',
         'api_token', // Добавляем новый столбец для массового заполнения
     ];
@@ -65,12 +66,12 @@ class User extends Authenticatable
 
     public function orders()
     {
-        return $this->belongsTo(Order::class, 'id_user', 'id_user');
+        return $this->hasMany(Order::class, 'id_user', 'id_user')->with('address', 'status');
     }
 
     public function cart_items()
     {
-        return $this->hasMany(CartOrder::class, 'id_user', 'id_user');
+        return $this->hasMany(CartOrder::class, 'id_user', 'id_user')->with('product');
     }
 
     public function favorites()

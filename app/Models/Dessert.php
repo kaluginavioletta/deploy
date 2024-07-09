@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Dessert extends Model
 {
@@ -13,17 +14,17 @@ class Dessert extends Model
 
     protected $table = 'dessert';
 
-    protected $primaryKey = 'id_dessert';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
-        'id_dessert',
-        'name_dessert',
+        'name',
+        'compound',
         'id_view_dessert',
-        'compound_dessert',
-        'price_dessert',
-        'percent_discount_dessert',
-        'discounted_price_dessert',
-        'img_dessert'
+        'price',
+        'percent_discount',
+        'discounted_price',
+        'grams',
+        'img',
     ];
 
     public function viewDessert()
@@ -34,5 +35,44 @@ class Dessert extends Model
     public function cart_items()
     {
         return $this->morphMany(CartOrder::class, 'product');
+    }
+
+    protected static function booted()
+    {
+        static::created(function (Dessert $dessert) {
+            $dessert->addProduct();
+        });
+        static::updated(function (Dessert $dessert) {
+            $dessert->updateProduct();
+        });
+    }
+
+    public function addProduct()
+    {
+        DB::table('products')->insert([
+            'name' => $this->name,
+            'compound' => $this->compound,
+            'price' => $this->price,
+            'type_product' => 'dessert',
+            'percent_discount' => $this->percent_discount,
+            'discounted_price' => $this->discounted_price,
+            'grams' => $this->grams,
+            'img' => $this->img,
+        ]);
+    }
+
+    public function updateProduct()
+    {
+        DB::table('products')
+            ->where('type_product', 'dessert')
+            ->update([
+                'name' => $this->name,
+                'compound' => $this->compound,
+                'price' => $this->price,
+                'percent_discount' => $this->percent_discount,
+                'discounted_price' => $this->discounted_price,
+                'grams' => $this->grams,
+                'img' => $this->img,
+            ]);
     }
 }

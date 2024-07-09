@@ -17,6 +17,7 @@ class Order extends Model
 
     protected $fillable = [
         'id_user',
+        'type_product',
         'id_address',
         'id_status',
         'total_price'
@@ -29,32 +30,15 @@ class Order extends Model
 
     public function status()
     {
-        return $this->belongsTo(Status::class, 'id_status', 'id_status');
+        return $this->hasMany(Status::class, 'id_status', 'id_status');
     }
-
-    public function hasProductType($productType)
-    {
-        return $this->items()->where('product_type', $productType)->exists();
-    }
-
-    public function cart_orders()
+    public function items()
     {
         return $this->hasMany(CartOrder::class, 'id_order', 'id_order');
     }
 
-    public function calculateTotalPrice()
+    public function users()
     {
-        $totalPrice = 0;
-        foreach ($this->items as $item) {
-            $totalPrice += $item->quantity * $item->price;
-        }
-
-        $this->total_price = $totalPrice;
-        $this->save();
-    }
-
-    public function items()
-    {
-        return $this->hasMany(CartOrder::class, 'id_order');
+        return $this->belongsTo(User::class, 'id_user', 'id_user');
     }
 }

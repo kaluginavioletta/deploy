@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id('id_order');
             $table->foreignId('id_address')->constrained('addresses', 'id_address')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('id_status')->constrained('statuses', 'id_status')->onUpdate('cascade')->onDelete('cascade');
-            $table->decimal('total_price', 8, 2); // 8 цифр всего, 2 после запятой
+            $table->integer('total_price'); // 8 цифр всего, 2 после запятой
+            $table->morphs('product');
             $table->timestamps();
         });
     }

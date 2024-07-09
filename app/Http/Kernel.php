@@ -2,7 +2,6 @@
 
 namespace App\Http;
 
-use App\Http\Middleware\CheckAdminRole;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Routing\Middleware\SubstituteBindings;
@@ -20,6 +19,7 @@ class Kernel extends HttpKernel
      */
     protected $middleware = [
         \App\Http\Middleware\Cors::class,
+        \Illuminate\Session\Middleware\StartSession::class,
     ];
 
     /**
@@ -44,7 +44,6 @@ class Kernel extends HttpKernel
      * @var array<string, class-string|string>
      */
     protected $routeMiddleware = [
-        'admin' => CheckAdminRole::class,
         'cors' => \App\Http\Middleware\Cors::class
     ];
 

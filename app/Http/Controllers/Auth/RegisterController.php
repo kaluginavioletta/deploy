@@ -12,11 +12,6 @@ use Illuminate\Validation\ValidationException;
 
 class RegisterController extends Controller
 {
-    public function create(Request $request)
-    {
-        return User::all();
-    }
-
     // Обработка данных, которые приходят с сервера
     public function store(Request $request)
     {

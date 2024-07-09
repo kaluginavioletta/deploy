@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Models\Sushi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Session;
 
@@ -20,8 +21,8 @@ class SushiController extends Controller
 {
     public function index()
     {
-        $sushi = Sushi::paginate(8);
-        return $sushi->items();
+        $sushi = Product::where('type_product', 'sushi')->get();
+        return response()->json(['data' => $sushi]);
     }
 
     // READ (Получить одно суши по ID)
@@ -31,31 +32,31 @@ class SushiController extends Controller
         if (!$sushi) {
             return response()->json(['message' => 'Суши закончились'], 404);
         }
-        return response()->json(['data' => $sushi], 200);
+        return $sushi;
     }
 
-    // CREATE (Создать новое суши)
     public function create(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name_sushi' => 'required|string|max:255',
-            'compound_sushi' => 'required|string',
+            'name' => 'required|string|max:255',
+            'compound' => 'required|string',
             'id_view_sushi' => 'nullable|exists:view_sushi,id_view_sushi',
-            'price_sushi' => 'required|integer',
-            'percent_discount_sushi' => 'integer|default:0',
-            'discounted_price_sushi' => 'integer',
-            'img_sushi' => 'string|max:255',
+            'price' => 'required|integer',
+            'percent_discount' => 'nullable|integer',
+            'discounted_price' => 'integer',
+            'grams' => 'integer',
+            'img' => 'required|image|max:2048',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $sushi = Sushi::create($request->all());
-        return response()->json(['data' => $sushi], 201);
-    }
+        $imagePath = $request->file('img')->store('images', 'public');
+        $sushi = Sushi::create(array_merge($request->all(), ['img' => $imagePath]));
 
-    // *UPDATE (Обновить суши)*
+        return $sushi;
+    }
     public function update(Request $request, $id)
     {
         $sushi = Sushi::find($id);
@@ -64,31 +65,46 @@ class SushiController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name_sushi' => 'sometimes|string|max:255',
-            'compound_sushi' => 'sometimes|string',
+            'name' => 'sometimes|string|max:255',
+            'compound' => 'sometimes|string',
             'id_view_sushi' => 'sometimes|nullable|exists:view_sushi,id_view_sushi',
-            'price_sushi' => 'sometimes|integer',
-            'percent_discount_sushi' => 'sometimes|integer|default:0',
-            'discounted_price_sushi' => 'sometimes|integer',
-            'img_sushi' => 'sometimes|string|max:255',
+            'price' => 'sometimes|integer',
+            'percent_discount' => 'sometimes|integer|default:0',
+            'discounted_price' => 'sometimes|integer',
+            'img' => 'sometimes|string|max:255',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $sushi->update($request->all());
-        return response()->json(['data' => $sushi], 200);
+        $sushi->update([
+            'name' => $request->filled('name') ? $request->input('name') : $sushi->name,
+            'compound' => $request->filled('compound') ? $request->input('compound') : $sushi->compound,
+            'id_view_sushi' => $request->filled('id_view_sushi') ? $request->input('id_view_sushi') : $sushi->id_view_sushi,
+            'price' => $request->filled('price') ? $request->input('price') : $sushi->price,
+            'percent_discount' => $request->filled('percent_discount') ? $request->input('percent_discount') : $sushi->percent_discount,
+            'discounted_price' => $request->filled('discounted_price') ? $request->input('discounted_price') : $sushi->discounted_price,
+            'img' => $request->filled('img') ? $request->input('img') : $sushi->img,
+        ]);
+
+        return $sushi;
     }
 
-    // *DELETE (Удалить суши)*
-    public function destroy($id)
-    {
+    public function destroy($id){
         $sushi = Sushi::find($id);
         if (!$sushi) {
             return response()->json(['message' => 'Суши с данным id не существует'], 404);
         }
+
         $sushi->delete();
+
+        // Удаляем соответствующую запись в таблице "products"
+        DB::table('products')
+            ->where('type_product', 'sushi')
+            ->where('id_sushi', $sushi->id_sushi)
+            ->delete();
+
         return response()->json(['message' => 'Определённый суши удалён'], 204);
     }
 }

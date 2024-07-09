@@ -17,7 +17,7 @@ class FavoriteController extends Controller
         $favorites = $user->favorites()->with('product')->get();
 
         return response()->json([
-            'favorites' => $favorites,
+            'data' => $favorites,
         ]);
     }
 
@@ -26,11 +26,13 @@ class FavoriteController extends Controller
         $product = Product::findOrFail($id);
         $user = Auth::user();
 
+        $productId = $product->id_product;
+
         // Определение типа продукта
-        $typeProduct = get_class($product);
+        $typeProduct = $product->type_product;
 
         // Проверяем, добавлен ли уже этот товар в избранное
-        $favoriteItem = $user->favorites()->where('id_product', $product->id_product)->first();
+        $favoriteItem = $user->favorites()->where('id_product', $productId)->where('type_product', $typeProduct)->first();
 
         if ($favoriteItem) {
             $message = 'Этот товар уже добавлен в избранное!';
@@ -38,7 +40,7 @@ class FavoriteController extends Controller
             // Добавляем товар в избранное
             $favoriteItem = new Favorite([
                 'id_user' => $user->id_user,
-                'id_product' => $product->id_product,
+                'id_product' => $productId,
                 'type_product' => $typeProduct,
             ]);
             $favoriteItem->save();
@@ -47,13 +49,18 @@ class FavoriteController extends Controller
 
         return response()->json([
             'message' => $message,
+            'id_product' => $productId,
+            'name' => $product->name,
+            'discounted_price' => $product->discounted_price,
+            'type_product' => $typeProduct,
         ]);
     }
+
 
     public function removeFromFavorites(Request $request, $id)
     {
         $user = Auth::user();
-        $favoriteItem = $user->favorites()->where('id_product', $id)->first();
+        $favoriteItem = $user->favorites()->where('id_product', $id);
 
         if ($favoriteItem) {
             $favoriteItem->delete();

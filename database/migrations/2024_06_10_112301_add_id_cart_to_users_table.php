@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->foreignId('id_user')->constrained('users', 'id_user')->after('id_order')->nullable();
+        Schema::table('users', function (Blueprint $table) {
+            $table->foreignId('id_cart')->nullable()->constrained('cart_orders', 'id_cart')->after('id_role')->onUpdate('cascade')->onDelete('cascade');
         });
     }
 
@@ -21,8 +21,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->dropForeign(['id_user']);
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropForeign(['id_cart']);
+            $table->dropColumn('id_cart');
         });
     }
 };

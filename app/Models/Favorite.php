@@ -19,7 +19,6 @@ class Favorite extends Model
         'id_user',
         'id_product',
         'type_product',
-        'id_dessert'
     ];
 
     public function users()

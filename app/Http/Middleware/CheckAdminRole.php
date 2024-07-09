@@ -23,9 +23,11 @@ class CheckAdminRole
 
             if ($role && $role->name_role === 'admin') {
                 return $next($request);
+            } else {
+                return response()->json(['error' => 'Вы не администратор'], 403);
             }
         }
 
-        return redirect('/'); // Редирект на главную страницу или другую страницу, если у пользователя нет прав администратора
+        return response()->json(['error' => 'Вы не авторизованы'], 401);
     }
 }

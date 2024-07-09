@@ -19,4 +19,9 @@ class Status extends Model
         'id_status',
         'name_status'
     ];
+
+    public function name_status()
+    {
+        return $this->name_status;
+    }
 }

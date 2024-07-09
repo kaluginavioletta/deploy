@@ -12,29 +12,24 @@ use App\Models\Product;
 use App\Models\Sushi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
 {
+
     public function createOrder(Request $request)
     {
         $user = Auth::user();
-        $cartItems = $user->cart_items()->get();
 
-        // Проверяем наличие товаров в корзине
-        if ($cartItems->isEmpty()) {
-            return response()->json([
-                'error' => 'Ваша корзина пуста. Нечего добавлять в заказ.'
-            ]);
-        }
+        // Получаем товары из корзины пользователя
+        $cartItems = $user->cart_items();
 
-        $totalPrice = $cartItems->sum('price');
-
-        // Создаем новый заказ
         $order = new Order([
             'id_user' => $user->id_user,
-            'id_status' => 1, // Предположим, что статус "В обработке" имеет id = 1
-            'total_price' => $totalPrice // Фиксируем общую стоимость заказа
+            'id_status' => 1, // Статус "Новый"
+            'total_price' => $cartItems->sum('total_price'), // Добавляем общую стоимость заказа
         ]);
+
         $order->save();
 
         // Привязываем адрес доставки к заказу
@@ -77,20 +72,14 @@ class OrderController extends Controller
             $cartItem->delete();
         }
 
-        // Пересчитываем общую стоимость заказа
-        $order->calculateTotalPrice(); // Предположим, что у вас есть метод calculateTotalPrice для расчета общей стоимости
-
         // Удаляем все товары из корзины пользователя
         $user->cart_items()->delete();
-
-        // Получаем связанный статус заказа
-        $status = $order->status;
 
         return response()->json([
             'message' => 'Заказ успешно оформлен!',
             'order_number' => $order->id_order,
             'total_price' => $order->total_price,
-            'status' => $status->name_status,
+            'status' => $order->status->first()->name_status,
             'delivery_address' => $address,
             'ordered_items' => $order->items,
         ]);
@@ -98,28 +87,24 @@ class OrderController extends Controller
     public function showOrders()
     {
         $user = Auth::user();
-        $orders = $user->orders()->with('cart_orders', 'address', 'status')->get();
+        $orders = $user->orders()->with('address', 'status', 'items')->get();
 
-        if ($orders->isNotEmpty()) {
+        if ($orders->count() > 0) {
             $ordersDetails = [];
 
             foreach ($orders as $order) {
                 $orderItems = [];
-                $orderTotalPrice = 0;
+                $orderTotalPrice = $order->total_price;
 
-                if ($order->cart_orders->isNotEmpty()) {
-                    foreach ($order->cart_orders as $cartOrder) {
-                        $product = $cartOrder->product;
-
-                        $itemDetails = [
-                            'product_name' => $product->name,
-                            'price' => $product->price,
-                            'quantity' => $cartOrder->quantity,
-                            'total_price' => $cartOrder->quantity * $product->price,
-                        ];
-                        $orderItems[] = $itemDetails;
-                        $orderTotalPrice += $itemDetails['total_price'];
-                    }
+                foreach ($order->items()->get() as $cartOrder) {
+                    $orderedItems = [
+                        'id_product' => $cartOrder->product->id_product,
+                        'name' => $cartOrder->product->name,
+                        'quantity' => $cartOrder->quantity,
+                        'discounted_price' => $cartOrder->discounted_price,
+                        'total_price' => $cartOrder->total_price,
+                    ];
+                    $orderItems[] = $orderedItems;
                 }
 
                 $deliveryAddress = $order->address;
@@ -134,19 +119,44 @@ class OrderController extends Controller
                 $ordersDetails[] = [
                     'order_number' => $order->id_order,
                     'total_price' => $orderTotalPrice,
-                    'status' => $order->status->name_status,
+                    'status' => $order->status->first()->name_status,
                     'delivery_address' => $deliveryAddressDetails,
                     'ordered_items' => $orderItems,
                 ];
             }
 
             return response()->json([
-                'orders' => $ordersDetails,
+                'data' => $ordersDetails,
             ]);
         } else {
             return response()->json([
                 'message' => 'У вас пока нет оформленных заказов.'
             ]);
         }
+    }
+
+    public function updateStatus(Request $request, $orderId)
+    {
+        $order = Order::find($orderId);
+
+        if (!$order) {
+            return response()->json(['message' => 'Заказ не найден'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'id_status' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $order->update([
+            'id_status' => $request->input('id_status'),
+        ]);
+
+        $order->save();
+
+        return response()->json(['message' => 'Статус заказа успешно обновлен', 'id_status' => $order->id_status], 200);
     }
 }

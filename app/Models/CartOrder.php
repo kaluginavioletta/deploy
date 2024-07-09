@@ -19,7 +19,7 @@ class CartOrder extends Model
         'type_product',
         'id_product',
         'quantity',
-        'price',
+        'total_price',
     ];
 
     public function order()
@@ -29,23 +29,11 @@ class CartOrder extends Model
 
     public function product()
     {
-        return $this->belongsTo(Product::class, 'id_product', 'id_product');
-    }
-
-    public function removeFromCart()
-    {
-        $this->delete();
+        return $this->hasMany(Product::class, 'id_product', 'id_product');
     }
 
     public function items()
     {
         return $this->hasMany(Order::class, 'id_order', 'id_order');
-    }
-
-    public function increaseQuantityAndUpdatePrice($quantity)
-    {
-        $this->quantity += $quantity;
-        $this->price = $this->quantity * $this->price;
-        $this->save();
     }
 }

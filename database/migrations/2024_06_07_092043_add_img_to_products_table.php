@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('sushi', function (Blueprint $table) {
-                $table->integer('grams')->after('discounted_price')->default(0);
+        Schema::table('products', function (Blueprint $table) {
+            $table->string('img', 255);
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('sushi', function (Blueprint $table) {
-            $table->dropColumn('grams');
+        Schema::table('products', function (Blueprint $table) {
+            $table->dropColumn('img');
         });
     }
 };

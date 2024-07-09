@@ -13,9 +13,10 @@ return new class extends Migration
     {
         Schema::create('favorites', function (Blueprint $table) {
             $table->foreignId('id_user')->constrained('users', 'id_user')->onUpdate('cascade')->onDelete('cascade');
-            $table->foreignId('id_sushi')->constrained('sushi', 'id_sushi')->onUpdate('cascade')->onDelete('cascade');
-            $table->foreignId('id_drink')->constrained('drinkables', 'id_drink')->onUpdate('cascade')->onDelete('cascade');
-            $table->foreignId('id_dessert')->constrained('dessert', 'id_dessert')->onUpdate('cascade')->onDelete('cascade');
+            $table->foreignId('id_sushi')->constrained('sushi', 'id')->onUpdate('cascade')->onDelete('cascade');
+            $table->foreignId('id_drink')->constrained('drinkables', 'id')->onUpdate('cascade')->onDelete('cascade');
+            $table->foreignId('id_dessert')->constrained('dessert', 'id')->onUpdate('cascade')->onDelete('cascade');
+            $table->morphs('product');
             $table->timestamps();
         });
     }

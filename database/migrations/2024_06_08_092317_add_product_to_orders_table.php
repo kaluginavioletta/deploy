@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('sushi', function (Blueprint $table) {
-                $table->integer('grams')->after('discounted_price')->default(0);
+        Schema::table('orders', function (Blueprint $table) {
+            $table->foreignId('id_product')->constrained('products', 'id_product')->onUpdate('cascade')->onDelete('cascade');
         });
     }
 
@@ -21,8 +21,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('sushi', function (Blueprint $table) {
-            $table->dropColumn('grams');
+        Schema::table('orders', function (Blueprint $table) {
+            $table->dropForeign(['id_product']);
+            $table->dropColumn('id_product');
         });
     }
 };

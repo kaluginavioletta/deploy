@@ -17,7 +17,8 @@ return new class extends Migration
             $table->string('type_product');
             $table->foreignId('id_product')->constrained('products', 'id_product')->after('type_product')->nullable();
             $table->integer('quantity');
-            $table->decimal('price', 8, 2);
+            $table->morphs('product');
+            $table->decimal('total_price', 8, 2);
             $table->timestamps();
         });
     }

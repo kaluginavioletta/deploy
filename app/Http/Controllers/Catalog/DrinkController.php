@@ -4,15 +4,17 @@ namespace App\Http\Controllers\Catalog;
 
 use App\Http\Controllers\Controller;
 use App\Models\Drink;
+use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class DrinkController extends Controller
 {
     public function index()
     {
-        $drink = Drink::paginate(8);
-        return $drink->items();
+        $drink = Product::where('type_product', 'drink')->get();
+        return response()->json(['data' => $drink]);
     }
     public function show($id)
     {
@@ -20,64 +22,81 @@ class DrinkController extends Controller
         if (!$drink) {
             return response()->json(['message' => 'Напитки закончились'], 404);
         }
-        return response()->json(['data' => $drink], 200);
+        return $drink;
     }
 
-    // *CREATE (Создать новое суши)*
-    public function store(Request $request)
+    public function create(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name_drink' => 'required|string|max:255',
-            'compound_drink' => 'required|string',
-            'id_view_drink' => 'nullable|exists:view_sushi,id_view_sushi',
-            'price_drink' => 'required|integer',
-            'percent_discount_drink' => 'integer|default:0',
-            'discounted_price_drink' => 'integer',
-            'img_drink' => 'string|max:255',
+            'name' => 'required|string|max:255',
+            'compound' => 'required|string',
+            'id_view_drink' => 'nullable|exists:view_drinkables,id_view_drink',
+            'price' => 'required|integer',
+            'percent_discount' => 'nullable|integer',
+            'discounted_price' => 'integer',
+            'grams' => 'integer',
+            'img' => 'required|image|max:2048',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $drink = Drink::create($request->all());
-        return response()->json(['data' => $drink], 201);
+        $imagePath = $request->file('img')->store('images', 'public');
+        $drink = Drink::create(array_merge($request->all(), ['img' => $imagePath]));
+
+        return $drink;
     }
 
-    // *UPDATE (Обновить суши)*
     public function update(Request $request, $id)
     {
         $drink = Drink::find($id);
         if (!$drink) {
-            return response()->json(['message' => 'Напитков нет в наличии'], 404);
+            return response()->json(['message' => 'Напитки закончились'], 404);
         }
 
         $validator = Validator::make($request->all(), [
-            'name_drink' => 'sometimes|string|max:255',
-            'compound_drink' => 'sometimes|string',
-            'id_view_drink' => 'sometimes|nullable|exists:view_sushi,id_view_sushi',
-            'price_drink' => 'sometimes|integer',
-            'percent_discount_drink' => 'sometimes|integer|default:0',
-            'discounted_price_drink' => 'sometimes|integer',
-            'img_drink' => 'sometimes|string|max:255',
+            'name' => 'sometimes|string|max:255',
+            'compound' => 'sometimes|string',
+            'id_view_sushi' => 'sometimes|nullable|exists:view_sushi,id_view_sushi',
+            'price' => 'sometimes|integer',
+            'percent_discount' => 'sometimes|integer|default:0',
+            'discounted_price' => 'sometimes|integer',
+            'img' => 'sometimes|string|max:255',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $drink->update($request->all());
-        return response()->json(['data' => $drink], 200);
+        $drink->update([
+            'name' => $request->filled('name') ? $request->input('name') : $drink->name,
+            'compound' => $request->filled('compound') ? $request->input('compound') : $drink->compound,
+            'id_view_drink' => $request->filled('id_view_drink') ? $request->input('id_view_drink') : $drink->id_view_drink,
+            'price' => $request->filled('price') ? $request->input('price') : $drink->price,
+            'percent_discount' => $request->filled('percent_discount') ? $request->input('percent_discount') : $drink->percent_discount,
+            'discounted_price' => $request->filled('discounted_price') ? $request->input('discounted_price') : $drink->discounted_price,
+            'img' => $request->filled('img') ? $request->input('img') : $drink->img,
+        ]);
+
+        return $drink;
     }
 
-    // *DELETE (Удалить суши)*
-    public function destroy($id)
-    {
+    public function destroy($id){
         $drink = Drink::find($id);
         if (!$drink) {
-            return response()->json(['message' => 'Напиток с данным id не существует'], 404);
+            return response()->json(['message' => 'Напитки с данным id не существует'], 404);
         }
+
+        // Удаляем запись в таблице "sushi"
         $drink->delete();
-        return response()->json(['message' => 'Напиток удалён'], 204);
+
+        // Удаляем соответствующую запись в таблице "products"
+        DB::table('products')
+            ->where('type_product', 'drink')
+            ->where('id_drink', $drink->id_drink)
+            ->delete();
+
+        return response()->json(['message' => 'Определённый напиток удалён'], 204);
     }
 }

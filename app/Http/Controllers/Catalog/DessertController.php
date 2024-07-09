@@ -4,15 +4,17 @@ namespace App\Http\Controllers\Catalog;
 
 use App\Http\Controllers\Controller;
 use App\Models\Dessert;
+use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class DessertController extends Controller
 {
     public function index()
     {
-        $dessert = Dessert::paginate(8);
-        return $dessert->items();
+        $dessert = Product::where('type_product', 'dessert')->get();
+        return response()->json(['data' => $dessert]);
     }
     public function show($id)
     {
@@ -23,61 +25,77 @@ class DessertController extends Controller
         return response()->json(['data' => $dessert], 200);
     }
 
-    // *CREATE (Создать новое суши)*
-    public function store(Request $request)
+    public function create(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name_dessert' => 'required|string|max:255',
-            'compound_dessert' => 'required|string',
-            'id_view_dessert' => 'nullable|exists:view_sushi,id_view_sushi',
-            'price_dessert' => 'required|integer',
-            'percent_discount_dessert' => 'integer|default:0',
-            'discounted_price_dessert' => 'integer',
-            'img_dessert' => 'string|max:255',
+            'name' => 'required|string|max:255',
+            'compound' => 'required|string',
+            'id_view_dessert' => 'nullable|exists:view_dessert,id_view_dessert',
+            'price' => 'required|integer',
+            'percent_discount' => 'nullable|integer',
+            'discounted_price' => 'integer',
+            'grams' => 'integer',
+            'img' => 'required|image|max:2048',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $dessert = Dessert::create($request->all());
-        return response()->json(['data' => $dessert], 201);
+        $imagePath = $request->file('img')->store('images', 'public');
+        $dessert = Dessert::create(array_merge($request->all(), ['img' => $imagePath]));
+
+        return $dessert;
     }
 
-    // *UPDATE (Обновить суши)*
     public function update(Request $request, $id)
     {
         $dessert = Dessert::find($id);
         if (!$dessert) {
-            return response()->json(['message' => 'Десертов нет в наличии'], 404);
+            return response()->json(['message' => 'Дессерты закончились'], 404);
         }
 
         $validator = Validator::make($request->all(), [
-            'name_dessert' => 'sometimes|string|max:255',
-            'compound_dessert' => 'sometimes|string',
-            'id_view_dessert' => 'sometimes|nullable|exists:view_sushi,id_view_sushi',
-            'price_dessert' => 'sometimes|integer',
-            'percent_discount_dessert' => 'sometimes|integer|default:0',
-            'discounted_price_dessert' => 'sometimes|integer',
-            'img_dessert' => 'sometimes|string|max:255',
+            'name' => 'sometimes|string|max:255',
+            'compound' => 'sometimes|string',
+            'id_view_sushi' => 'sometimes|nullable|exists:view_sushi,id_view_sushi',
+            'price' => 'sometimes|integer',
+            'percent_discount' => 'sometimes|integer|default:0',
+            'discounted_price' => 'sometimes|integer',
+            'img' => 'sometimes|string|max:255',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $dessert->update($request->all());
-        return response()->json(['data' => $dessert], 200);
+        $dessert->update([
+            'name' => $request->filled('name') ? $request->input('name') : $dessert->name,
+            'compound' => $request->filled('compound') ? $request->input('compound') : $dessert->compound,
+            'id_view_drink' => $request->filled('id_view_drink') ? $request->input('id_view_dessert') : $dessert->id_view_dessert,
+            'price' => $request->filled('price') ? $request->input('price') : $dessert->price,
+            'percent_discount' => $request->filled('percent_discount') ? $request->input('percent_discount') : $dessert->percent_discount,
+            'discounted_price' => $request->filled('discounted_price') ? $request->input('discounted_price') : $dessert->discounted_price,
+            'img' => $request->filled('img') ? $request->input('img') : $dessert->img,
+        ]);
+
+        return $dessert;
     }
 
-    // *DELETE (Удалить суши)*
-    public function destroy($id)
-    {
+    public function destroy($id){
         $dessert = Dessert::find($id);
         if (!$dessert) {
-            return response()->json(['message' => 'Десерт с данным id не существует'], 404);
+            return response()->json(['message' => 'Дессерт с данным id не существует'], 404);
         }
+
         $dessert->delete();
-        return response()->json(['message' => 'Определённый десерт удалён'], 204);
+
+        // Удаляем соответствующую запись в таблице "products"
+        DB::table('products')
+            ->where('type_product', 'dessert')
+            ->where('id_dessert', $dessert->id_dessert)
+            ->delete();
+
+        return response()->json(['message' => 'Определённый десеерт удалён'], 204);
     }
 }

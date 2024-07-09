@@ -35,19 +35,25 @@ class LoginController extends Controller
         // Сохранение токена в сессии
         Session::put('auth_token', $token);
 
-        return response()->json(['message' => 'Успешный вход', 'token' => $token], 200);
+        return response()->json(['message' => 'Успешный вход', 'api_token' => $token], 200);
     }
 
-    public function logout(Request $request)
-    {
-        Auth::logout();
+    public function logout(Request $request) {
+        // Получить токен пользователя из заголовка авторизации
+        $token = $request->header('Authorization');
 
-        // Сгенерировать новый идентификатор для сессии пользователя
-        $request->session()->invalidate();
-
-        // Сгенерировать новые значения для CSRF-токена
-        $request->session()->regenerateToken();
-
-        return response()->json(['message' => 'Успешный выход'], 200);
+        // Проверка, если токен существует
+        if ($token) {
+            // Удалить токен пользователя
+            $user = Auth::user();
+            if ($user) {
+                $user->tokens()->delete();
+                return response()->json(['message' => 'Успешный выход'], 200);
+            } else {
+                return response()->json(['message' => 'Ошибка авторизации'], 401);
+            }
+        } else {
+            return response()->json(['message' => 'Ошибка авторизации'], 401);
+        }
     }
 }

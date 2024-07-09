@@ -12,7 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('dessert', function (Blueprint $table) {
-            $table->integer('percent_discount_dessert')->after('price_dessert')->default(0);
             $table->foreignId('id_view_dessert')->constrained('view_dessert', 'id_view_dessert')->after('name_dessert')->nullable();
         });
     }
@@ -23,7 +22,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('dessert', function (Blueprint $table) {
-            $table->dropColumn('percent_discount_dessert');
             $table->dropForeign(['id_view_dessert']);
             $table->dropColumn('id_view_dessert');
         });

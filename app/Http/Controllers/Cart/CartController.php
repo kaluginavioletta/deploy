@@ -19,7 +19,7 @@ class CartController extends Controller
         $user = Auth::user();
         $cartItems = $user->cart_items;
 
-        if ($cartItems->isNotEmpty()) {
+        if ($cartItems->count() > 0) {
             $cartDetails = [];
             $totalPrice = 0;
 
@@ -28,12 +28,14 @@ class CartController extends Controller
 
                 if ($product) {
                     $itemDetails = [
-                        'product_name' => $product->name,
+                        'id_product' => $product->id_product,
+                        'name' => $product->name,
                         'price' => $product->price,
+                        'discounted_price' => $product->discounted_price,
                         'quantity' => $cartItem->quantity,
-                        'grams' => $cartItem->grams,
-                        'img' => $cartItem->img,
-                        'total_price' => $cartItem->quantity * $product->price,
+                        'grams' => $product->grams,
+                        'img' => $product->img,
+                        'total_price' => $cartItem->quantity * $product->discounted_price,
                     ];
 
                     // Добавляем дополнительные детали в зависимости от типа продукта
@@ -52,7 +54,7 @@ class CartController extends Controller
             }
 
             return response()->json([
-                'cart' => $cartDetails,
+                'data' => $cartDetails,
                 'total_price' => $totalPrice,
             ]);
         } else {
@@ -64,36 +66,31 @@ class CartController extends Controller
 
     public function addToCart(Request $request, $id)
     {
+        // Определение типа продукта на основе id
         $product = Product::findOrFail($id);
+        $typeProduct = $product->type_product;
+
+        $productId = $product->id_product;
+
         $user = Auth::user();
 
-        // Определение type_product на основе типа продукта
-        $typeProduct = '';
-
-        if ($product instanceof Sushi) {
-            $typeProduct = 'sushi';
-        } elseif ($product instanceof Drink) {
-            $typeProduct = 'drink';
-        } elseif ($product instanceof Dessert) {
-            $typeProduct = 'dessert';
-        }
-
-        // Проверяем, есть ли уже этот товар в корзине
-        $orderItem = $user->cart_items()->where('id_product', $product->id_product)->first();
+        // Проверяем, есть ли уже этот продукт в корзине
+        $orderItem = $user->cart_items()->where('id_product', $productId)->first();
 
         if ($orderItem) {
-            // Если товар уже есть, увеличиваем количество
+            // Если продукт уже есть, увеличиваем количество
             $orderItem->quantity += $request->input('quantity', 1);
             $orderItem->save();
             $message = 'Количество товаров в корзине увеличено!';
         } else {
-            // Если товара нет, создаем новую запись в корзине с указанием type_product и price
+            // Если продукта нет, создаем новую запись в корзине с указанием type_product и price
             $orderItem = new CartOrder([
                 'id_user' => $user->id_user,
-                'id_product' => $product->id_product,
+                'id_product' => $productId,
                 'quantity' => $request->input('quantity', 1),
+                'discounted_price' => $product->discounted_price,
                 'type_product' => $typeProduct,
-                'price' => $product->price,
+                'total_price' => $request->input('quantity', 1) * $product->discounted_price,
             ]);
             $orderItem->save();
             $message = 'Товар добавлен в корзину!';
@@ -101,23 +98,13 @@ class CartController extends Controller
 
         return response()->json([
             'message' => $message,
+            'id_product' => $productId,
+            'name' => $product->name,
+            'discounted_price' => $product->discounted_price,
+            'quantity' => $orderItem->quantity,
+            'type_product' => $typeProduct,
+            'total_price' => $orderItem->total_price,
         ]);
-    }
-
-    protected function getOrCreateOrder($user)
-    {
-        $order = $user->orders()->where('id_status', 1)->first(); // Assuming status 1 is for pending orders
-
-        if (!$order) {
-            $order = new Order([
-                'id_user' => $user->id_user,
-                'id_status' => 1,
-                'total_price' => 0, // Set total_price to default value
-            ]);
-            $order->save();
-        }
-
-        return $order;
     }
     public function removeFromCart(Request $request, $id)
     {
@@ -138,6 +125,50 @@ class CartController extends Controller
             return response()->json([
                 'message' => 'Товар отсутствует в корзине!',
             ]);
+        }
+    }
+
+    public function increaseQuantity(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+        $user = Auth::user();
+
+        // Проверяем, есть ли этот товар в корзине
+        $orderItem = $user->cart_items()->where('id_product', $product->id_product)->first();
+
+        if ($orderItem) {
+            // Если товар есть, увеличиваем количество
+            $orderItem->quantity += $request->input('quantity', 1);
+            $orderItem->save();
+
+            return response()->json([
+                'message' => 'Количество товаров в корзине увеличено!',
+            ]);
+        }
+    }
+
+    public function decreaseQuantity(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+        $user = Auth::user();
+
+        // Проверяем, есть ли этот товар в корзине
+        $orderItem = $user->cart_items()->where('id_product', $product->id_product)->first();
+
+        if ($orderItem) {
+            if ($orderItem->quantity > 1) {
+                $orderItem->quantity -= $request->input('quantity', 1);
+                $orderItem->save();
+
+                return response()->json([
+                    'message' => 'Количество товаров в корзине уменьшено!',
+                ]);
+            } else {
+                // Если количество товаров равно 1, то нельзя уменьшать
+                return response()->json([
+                    'message' => 'Количество товаров равно 1, уменьшение невозможно!',
+                ]);
+            }
         }
     }
 }
