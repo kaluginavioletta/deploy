@@ -17,7 +17,6 @@ class Order extends Model
 
     protected $fillable = [
         'id_user',
-        'type_product',
         'id_address',
         'id_status',
         'total_price'
@@ -30,7 +29,7 @@ class Order extends Model
 
     public function status()
     {
-        return $this->hasMany(Status::class, 'id_status', 'id_status');
+        return $this->belongsTo(Status::class, 'id_status', 'id_status');
     }
     public function items()
     {

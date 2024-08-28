@@ -16,20 +16,25 @@ use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
 {
-
     public function createOrder(Request $request)
     {
         $user = Auth::user();
 
         // Получаем товары из корзины пользователя
-        $cartItems = $user->cart_items();
+        $cartItems = $user->cart_items;
 
+        // Рассчитываем общую стоимость всех товаров в корзине
+        $totalOrderPrice = $cartItems->sum(function($cartItem) {
+            $product = Product::find($cartItem->id_product);
+            return $cartItem->quantity * $product->discounted_price; // Суммируем стоимость каждого товара
+        });
+
+        // Создаем новый заказ
         $order = new Order([
             'id_user' => $user->id_user,
             'id_status' => 1, // Статус "Новый"
-            'total_price' => $cartItems->sum('total_price'), // Добавляем общую стоимость заказа
+            'total_price' => $totalOrderPrice, // Устанавливаем общую стоимость заказа
         ]);
-
         $order->save();
 
         // Привязываем адрес доставки к заказу
@@ -42,14 +47,18 @@ class OrderController extends Controller
         ]);
         $address->save();
 
+        // Сохраняем id_address в заказе
         $order->id_address = $address->id_address;
+        $order->save(); // Сохраняем изменения в заказе
+
+        $orderedItems = []; // Массив для хранения заказанных товаров
 
         // Переносим товары из корзины в заказ
         foreach ($cartItems as $cartItem) {
             $product = Product::find($cartItem->id_product);
 
+            // Определяем тип продукта
             $typeProduct = '';
-
             if ($product instanceof Sushi) {
                 $typeProduct = 'sushi';
             } elseif ($product instanceof Drink) {
@@ -58,18 +67,28 @@ class OrderController extends Controller
                 $typeProduct = 'dessert';
             }
 
+            $itemTotalPrice = $cartItem->quantity * $product->discounted_price; // Рассчитываем стоимость товара
+
+            // Создаем запись в cart_orders
             $orderItem = new CartOrder([
                 'id_user' => $user->id_user,
                 'id_order' => $order->id_order,
-                'type_product' => $typeProduct,
                 'id_product' => $cartItem->id_product,
                 'quantity' => $cartItem->quantity,
-                'price' => $cartItem->price,
+                'discounted_price' => $product->discounted_price,
+                'total_price' => $itemTotalPrice, // Сохраняем стоимость товара
+                'type_product' => $typeProduct, // Устанавливаем тип продукта
             ]);
             $orderItem->save();
 
-            // Удаляем товар из корзины
-            $cartItem->delete();
+            // Добавляем только нужные данные о продукте в массив orderedItems
+            $orderedItems[] = [
+                'id_product' => $product->id_product,
+                'name' => $product->name,
+                'quantity' => $cartItem->quantity,
+                'discounted_price' => $product->discounted_price,
+                'total_price' => $itemTotalPrice, // Сохраняем стоимость товара
+            ];
         }
 
         // Удаляем все товары из корзины пользователя
@@ -78,63 +97,71 @@ class OrderController extends Controller
         return response()->json([
             'message' => 'Заказ успешно оформлен!',
             'order_number' => $order->id_order,
-            'total_price' => $order->total_price,
+            'total_price' => $order->total_price, // Общая стоимость заказа
             'status' => $order->status->first()->name_status,
-            'delivery_address' => $address,
-            'ordered_items' => $order->items,
+            'delivery_address' => [
+                'address_city' => $address->address_city,
+                'address_street' => $address->address_street,
+                'address_entrance' => $address->address_entrance,
+                'address_floor' => $address->address_floor,
+                'address_apartment' => $address->address_apartment,
+            ], // Возвращаем адрес
+            'ordered_items' => $orderedItems, // Возвращаем только нужные данные о товарах
         ]);
     }
     public function showOrders()
     {
-        $user = Auth::user();
-        $orders = $user->orders()->with('address', 'status', 'items')->get();
+        $user = Auth::user(); // Получаем текущего аутентифицированного пользователя
 
-        if ($orders->count() > 0) {
-            $ordersDetails = [];
+        // Загружаем заказы с адресами, статусами и товарами
+        $orders = $user->orders()->with('address', 'status', 'items.product')->get();
 
-            foreach ($orders as $order) {
-                $orderItems = [];
-                $orderTotalPrice = $order->total_price;
-
-                foreach ($order->items()->get() as $cartOrder) {
-                    $orderedItems = [
-                        'id_product' => $cartOrder->product->id_product,
-                        'name' => $cartOrder->product->name,
-                        'quantity' => $cartOrder->quantity,
-                        'discounted_price' => $cartOrder->discounted_price,
-                        'total_price' => $cartOrder->total_price,
-                    ];
-                    $orderItems[] = $orderedItems;
-                }
-
-                $deliveryAddress = $order->address;
-                $deliveryAddressDetails = [
-                    'city' => $deliveryAddress->address_city ?? '',
-                    'street' => $deliveryAddress->address_street ?? '',
-                    'entrance' => $deliveryAddress->address_entrance ?? '',
-                    'floor' => $deliveryAddress->address_floor ?? '',
-                    'apartment' => $deliveryAddress->address_apartment ?? '',
-                ];
-
-                $ordersDetails[] = [
-                    'order_number' => $order->id_order,
-                    'total_price' => $orderTotalPrice,
-                    'status' => $order->status->first()->name_status,
-                    'delivery_address' => $deliveryAddressDetails,
-                    'ordered_items' => $orderItems,
-                ];
-            }
-
-            return response()->json([
-                'data' => $ordersDetails,
-            ]);
-        } else {
+        if ($orders->isEmpty()) {
             return response()->json([
                 'message' => 'У вас пока нет оформленных заказов.'
             ]);
         }
-    }
 
+        $ordersDetails = [];
+
+        foreach ($orders as $order) {
+            // Получаем адрес для текущего заказа
+            $deliveryAddress = $order->address;
+
+            // Формируем массив с деталями заказанных товаров
+            $orderedItems = $order->items->map(function ($item) {
+                return [
+                    'id_product' => $item->id_product,
+                    'name' => $item->product->name,
+                    'quantity' => $item->quantity,
+                    'discounted_price' => $item->discounted_price,
+                    'total_price' => $item->total_price,
+                ];
+            });
+
+            // Проверяем, существует ли адрес
+            $deliveryAddressDetails = $deliveryAddress ? [
+                'address_city' => $deliveryAddress->address_city ?? '',
+                'address_street' => $deliveryAddress->address_street ?? '',
+                'address_entrance' => $deliveryAddress->address_entrance ?? '',
+                'address_floor' => $deliveryAddress->address_floor ?? '',
+                'address_apartment' => $deliveryAddress->address_apartment ?? '',
+            ] : null; // Если адреса нет, устанавливаем null
+
+            // Добавляем детали заказа в массив
+            $ordersDetails[] = [
+                'order_number' => $order->id_order,
+                'total_price' => $order->total_price,
+                'status' => $order->status->first()->name_status,
+                'delivery_address' => $deliveryAddressDetails, // Добавляем адрес заказа
+                'ordered_items' => $orderedItems, // Добавляем товары заказа
+            ];
+        }
+
+        return response()->json([
+            'data' => $ordersDetails,
+        ]);
+    }
     public function updateStatus(Request $request, $orderId)
     {
         $order = Order::find($orderId);
