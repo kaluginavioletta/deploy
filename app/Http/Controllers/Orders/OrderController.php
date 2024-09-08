@@ -86,7 +86,7 @@ class OrderController extends Controller
         $user = Auth::user(); // Получаем текущего аутентифицированного пользователя
 
         // Загружаем заказы с адресами, статусами и товарами
-        $orders = $user->orders()->with('address', 'status', 'items.product')->get(); // Изменено на 'items.product'
+        $orders = $user->orders()->with('address', 'status', 'items.product')->get();
 
         if ($orders->isEmpty()) {
             return response()->json([
@@ -106,8 +106,7 @@ class OrderController extends Controller
                     'id_product' => $item->id_product,
                     'name' => $item->product->name,
                     'quantity' => $item->quantity,
-                    'discounted_price' => $item->total_price / $item->quantity, // Предполагаем, что у вас есть total_price
-                    'total_price' => $item->total_price,
+                    'discounted_price' => $item->product->discounted_price, // Предполагаем, что у вас есть total_price
                     'img' => $item->product->img,
                 ];
             });
@@ -125,7 +124,7 @@ class OrderController extends Controller
             // Добавляем детали заказа в массив
             $ordersDetails[] = [
                 'order_number' => $order->id_order,
-                'total_price' => $order->total_price,
+                'total_price' => $order->total_price, // Используем сохраненную общую стоимость
                 'status' => $order->status->first()->name_status,
                 'delivery_address' => $deliveryAddressDetails, // Добавляем адрес заказа
                 'ordered_items' => $orderedItems, // Добавляем товары заказа

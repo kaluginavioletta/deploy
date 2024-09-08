@@ -91,7 +91,7 @@ class CartController extends Controller
         if ($cartOrder) {
             // Если продукт уже есть, увеличиваем количество
             $cartOrder->quantity += $request->input('quantity', 1);
-            $cartOrder->total_price = $cartOrder->quantity * $product->price; // Обновляем общую стоимость
+            $cartOrder->total_price = $cartOrder->quantity * $product->discounted_price; // Обновляем общую стоимость
             $cartOrder->save();
             $message = 'Количество товаров в корзине увеличено!';
         } else {
@@ -100,7 +100,7 @@ class CartController extends Controller
                 'id_user' => $userId,
                 'id_product' => $productId,
                 'quantity' => $request->input('quantity', 1),
-                'total_price' => $request->input('quantity', 1) * $product->price,
+                'total_price' => $request->input('quantity', 1) * $product->discounted_price,
                 'type_product' => $typeProduct, // Устанавливаем тип продукта
             ]);
             $cartOrder->save();
@@ -112,6 +112,8 @@ class CartController extends Controller
             'id_product' => $productId,
             'name' => $product->name,
             'price' => $product->price,
+            'percent_discount' => $product->percent_discount,
+            'discounted_price' => $product->discounted_price,
             'quantity' => $cartOrder->quantity,
             'total_price' => $cartOrder->total_price,
         ]);

@@ -21,10 +21,6 @@ class CartOrder extends Model
         'quantity',
         'total_price',
     ];
-
-//    public $timestamps = false; // Если вам не нужны временные метки
-
-//    protected $primaryKey = ['id_user', 'id_product']; // Составной ключ
     public $incrementing = true; // Отключаем автоинкремент
 
     public function order()
