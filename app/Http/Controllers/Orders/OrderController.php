@@ -52,6 +52,7 @@ class OrderController extends Controller
         $address = new Address([
             'address_city' => $request->address_city,
             'address_street' => $request->address_street,
+            'address_home' => $request->address_home,
             'address_entrance' => $request->address_entrance,
             'address_floor' => $request->address_floor,
             'address_apartment' => $request->address_apartment,
@@ -73,6 +74,7 @@ class OrderController extends Controller
             'delivery_address' => [
                 'address_city' => $address->address_city,
                 'address_street' => $address->address_street,
+                'address_home' => $address->address_home,
                 'address_entrance' => $address->address_entrance,
                 'address_floor' => $address->address_floor,
                 'address_apartment' => $address->address_apartment,
@@ -106,6 +108,7 @@ class OrderController extends Controller
                     'quantity' => $item->quantity,
                     'discounted_price' => $item->total_price / $item->quantity, // Предполагаем, что у вас есть total_price
                     'total_price' => $item->total_price,
+                    'img' => $item->product->img,
                 ];
             });
 
@@ -113,6 +116,7 @@ class OrderController extends Controller
             $deliveryAddressDetails = $deliveryAddress ? [
                 'address_city' => $deliveryAddress->address_city ?? '',
                 'address_street' => $deliveryAddress->address_street ?? '',
+                'address_home' => $deliveryAddress->address_home ?? '',
                 'address_entrance' => $deliveryAddress->address_entrance ?? '',
                 'address_floor' => $deliveryAddress->address_floor ?? '',
                 'address_apartment' => $deliveryAddress->address_apartment ?? '',

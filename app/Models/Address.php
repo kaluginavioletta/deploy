@@ -19,6 +19,7 @@ class Address extends Model
         'id_address',
         'address_city',
         'address_street',
+        'address_home',
         'address_entrance',
         'address_floor',
         'address_apartment'
