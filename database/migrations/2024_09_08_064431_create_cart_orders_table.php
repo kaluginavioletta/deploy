@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('cart_orders', function (Blueprint $table) {
-            $table->id('id_cart');
-            $table->foreignId('id_order')->nullable()->constrained('orders', 'id_order')->onUpdate('cascade')->onDelete('cascade');
+            $table->id();
+            $table->foreignId('id_user')->nullable()->constrained('users', 'id_user')->onUpdate('cascade')->onDelete('cascade');
             $table->string('type_product');
             $table->foreignId('id_product')->constrained('products', 'id_product')->after('type_product')->nullable();
             $table->integer('quantity');

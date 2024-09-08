@@ -8,6 +8,7 @@ use App\Models\CartOrder;
 use App\Models\Dessert;
 use App\Models\Drink;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Sushi;
 use Illuminate\Http\Request;
@@ -20,22 +21,32 @@ class OrderController extends Controller
     {
         $user = Auth::user();
 
-        // Получаем товары из корзины пользователя
-        $cartItems = $user->cart_items;
+        // Получаем все товары из корзины текущего пользователя
+        $cartItems = CartOrder::where('id_user', $user->id_user)->get();
 
-        // Рассчитываем общую стоимость всех товаров в корзине
-        $totalOrderPrice = $cartItems->sum(function($cartItem) {
-            $product = Product::find($cartItem->id_product);
-            return $cartItem->quantity * $product->discounted_price; // Суммируем стоимость каждого товара
-        });
+        if ($cartItems->isEmpty()) {
+            return response()->json(['message' => 'Корзина пуста'], 400);
+        }
+
+        // Вычисляем общую стоимость заказа
+        $totalPrice = $cartItems->sum('total_price');
 
         // Создаем новый заказ
-        $order = new Order([
-            'id_user' => $user->id_user,
-            'id_status' => 1, // Статус "Новый"
-            'total_price' => $totalOrderPrice, // Устанавливаем общую стоимость заказа
-        ]);
+        $order = new Order();
+        $order->id_user = $user->id_user;
+        $order->id_status = 1; // Устанавливаем статус "Новый"
+        $order->total_price = $totalPrice;
         $order->save();
+
+        // Создаем записи для каждого товара в заказе
+        foreach ($cartItems as $item) {
+            OrderItem::create([
+                'id_order' => $order->id_order,
+                'id_product' => $item->id_product,
+                'quantity' => $item->quantity,
+                'total_price' => $item->total_price,
+            ]);
+        }
 
         // Привязываем адрес доставки к заказу
         $address = new Address([
@@ -51,62 +62,21 @@ class OrderController extends Controller
         $order->id_address = $address->id_address;
         $order->save(); // Сохраняем изменения в заказе
 
-        $orderedItems = []; // Массив для хранения заказанных товаров
-
-        // Переносим товары из корзины в заказ
-        foreach ($cartItems as $cartItem) {
-            $product = Product::find($cartItem->id_product);
-
-            // Определяем тип продукта
-            $typeProduct = '';
-            if ($product instanceof Sushi) {
-                $typeProduct = 'sushi';
-            } elseif ($product instanceof Drink) {
-                $typeProduct = 'drink';
-            } elseif ($product instanceof Dessert) {
-                $typeProduct = 'dessert';
-            }
-
-            $itemTotalPrice = $cartItem->quantity * $product->discounted_price; // Рассчитываем стоимость товара
-
-            // Создаем запись в cart_orders
-            $orderItem = new CartOrder([
-                'id_user' => $user->id_user,
-                'id_order' => $order->id_order,
-                'id_product' => $cartItem->id_product,
-                'quantity' => $cartItem->quantity,
-                'discounted_price' => $product->discounted_price,
-                'total_price' => $itemTotalPrice, // Сохраняем стоимость товара
-                'type_product' => $typeProduct, // Устанавливаем тип продукта
-            ]);
-            $orderItem->save();
-
-            // Добавляем только нужные данные о продукте в массив orderedItems
-            $orderedItems[] = [
-                'id_product' => $product->id_product,
-                'name' => $product->name,
-                'quantity' => $cartItem->quantity,
-                'discounted_price' => $product->discounted_price,
-                'total_price' => $itemTotalPrice, // Сохраняем стоимость товара
-            ];
-        }
-
-        // Удаляем все товары из корзины пользователя
-        $user->cart_items()->delete();
+        // Очищаем корзину только после успешного создания заказа и всех связанных записей
+        CartOrder::where('id_user', $user->id_user)->delete();
 
         return response()->json([
-            'message' => 'Заказ успешно оформлен!',
-            'order_number' => $order->id_order,
-            'total_price' => $order->total_price, // Общая стоимость заказа
-            'status' => $order->status->first()->name_status,
+            'message' => 'Заказ успешно создан!',
+            'id_order' => $order->id_order,
+            'total_price' => $totalPrice,
+            'status' => $order->status->first()->name_status, // Возвращаем статус заказа
             'delivery_address' => [
                 'address_city' => $address->address_city,
                 'address_street' => $address->address_street,
                 'address_entrance' => $address->address_entrance,
                 'address_floor' => $address->address_floor,
                 'address_apartment' => $address->address_apartment,
-            ], // Возвращаем адрес
-            'ordered_items' => $orderedItems, // Возвращаем только нужные данные о товарах
+            ],
         ]);
     }
     public function showOrders()
@@ -114,7 +84,7 @@ class OrderController extends Controller
         $user = Auth::user(); // Получаем текущего аутентифицированного пользователя
 
         // Загружаем заказы с адресами, статусами и товарами
-        $orders = $user->orders()->with('address', 'status', 'items.product')->get();
+        $orders = $user->orders()->with('address', 'status', 'items.product')->get(); // Изменено на 'items.product'
 
         if ($orders->isEmpty()) {
             return response()->json([
@@ -128,13 +98,13 @@ class OrderController extends Controller
             // Получаем адрес для текущего заказа
             $deliveryAddress = $order->address;
 
-            // Формируем массив с деталями заказанных товаров
+            // Формируем массив с деталями заказанных товаров из items
             $orderedItems = $order->items->map(function ($item) {
                 return [
                     'id_product' => $item->id_product,
                     'name' => $item->product->name,
                     'quantity' => $item->quantity,
-                    'discounted_price' => $item->discounted_price,
+                    'discounted_price' => $item->total_price / $item->quantity, // Предполагаем, что у вас есть total_price
                     'total_price' => $item->total_price,
                 ];
             });

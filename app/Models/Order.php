@@ -19,7 +19,8 @@ class Order extends Model
         'id_user',
         'id_address',
         'id_status',
-        'total_price'
+        'total_price',
+        'id_cart'
     ];
 
     public function address()
@@ -33,7 +34,7 @@ class Order extends Model
     }
     public function items()
     {
-        return $this->hasMany(CartOrder::class, 'id_order', 'id_order');
+        return $this->hasMany(OrderItem::class, 'id_order', 'id_order');
     }
 
     public function users()

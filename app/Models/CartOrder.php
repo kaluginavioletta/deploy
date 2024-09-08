@@ -11,29 +11,29 @@ class CartOrder extends Model
 
     protected $table = 'cart_orders';
 
-    protected $primaryKey = 'id_cart';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
+        'id_cart',
         'id_user',
-        'id_order',
         'type_product',
         'id_product',
         'quantity',
         'total_price',
     ];
 
+//    public $timestamps = false; // Если вам не нужны временные метки
+
+//    protected $primaryKey = ['id_user', 'id_product']; // Составной ключ
+    public $incrementing = true; // Отключаем автоинкремент
+
     public function order()
     {
-        return $this->belongsTo(Order::class, 'id_order', 'id_order');
+        return $this->belongsTo(Order::class, 'id_user');
     }
 
     public function product()
     {
-        return $this->hasMany(Product::class, 'id_product', 'id_product');
-    }
-
-    public function items()
-    {
-        return $this->hasMany(Order::class, 'id_order', 'id_order');
+        return $this->belongsTo(Product::class, 'id_product', 'id_product');
     }
 }

@@ -11,7 +11,7 @@ use App\Models\Product;
 use App\Models\Sushi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-
+use Illuminate\Support\Str;
 class CartController extends Controller
 {
     public function showCart()
@@ -68,31 +68,42 @@ class CartController extends Controller
     {
         // Определение типа продукта на основе id
         $product = Product::findOrFail($id);
-        $typeProduct = $product->type_product;
-
-        $productId = $product->id_product;
+        $productId = $product->id_product; // Предполагаем, что id_product теперь просто id
 
         $user = Auth::user();
+        $userId = $user->id_user; // Предполагаем, что id_user теперь просто id
 
         // Проверяем, есть ли уже этот продукт в корзине
-        $orderItem = $user->cart_items()->where('id_product', $productId)->first();
+        $cartOrder = CartOrder::where('id_user', $userId)
+            ->where('id_product', $productId)
+            ->first();
 
-        if ($orderItem) {
+        // Определяем тип продукта
+        $typeProduct = '';
+        if ($product instanceof Sushi) {
+            $typeProduct = 'sushi';
+        } elseif ($product instanceof Drink) {
+            $typeProduct = 'drink';
+        } elseif ($product instanceof Dessert) {
+            $typeProduct = 'dessert';
+        }
+
+        if ($cartOrder) {
             // Если продукт уже есть, увеличиваем количество
-            $orderItem->quantity += $request->input('quantity', 1);
-            $orderItem->save();
+            $cartOrder->quantity += $request->input('quantity', 1);
+            $cartOrder->total_price = $cartOrder->quantity * $product->price; // Обновляем общую стоимость
+            $cartOrder->save();
             $message = 'Количество товаров в корзине увеличено!';
         } else {
-            // Если продукта нет, создаем новую запись в корзине с указанием type_product и price
-            $orderItem = new CartOrder([
-                'id_user' => $user->id_user,
+            // Если продукта нет, создаем новую запись в корзине
+            $cartOrder = new CartOrder([
+                'id_user' => $userId,
                 'id_product' => $productId,
                 'quantity' => $request->input('quantity', 1),
-                'discounted_price' => $product->discounted_price,
-                'type_product' => $typeProduct,
-                'total_price' => $request->input('quantity', 1) * $product->discounted_price,
+                'total_price' => $request->input('quantity', 1) * $product->price,
+                'type_product' => $typeProduct, // Устанавливаем тип продукта
             ]);
-            $orderItem->save();
+            $cartOrder->save();
             $message = 'Товар добавлен в корзину!';
         }
 
@@ -100,10 +111,9 @@ class CartController extends Controller
             'message' => $message,
             'id_product' => $productId,
             'name' => $product->name,
-            'discounted_price' => $product->discounted_price,
-            'quantity' => $orderItem->quantity,
-            'type_product' => $typeProduct,
-            'total_price' => $orderItem->total_price,
+            'price' => $product->price,
+            'quantity' => $cartOrder->quantity,
+            'total_price' => $cartOrder->total_price,
         ]);
     }
     public function removeFromCart(Request $request, $id)
